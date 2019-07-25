@@ -3,11 +3,11 @@ const Crawler = require("crawler");
 const scrapeIt = require("scrape-it");
 const _ = require('lodash');
 
-const selector = '.xl7013492';
-const CrawUrl = 'http://www.mca.gov.cn/article/sj/tjbz/a/2018/201803131439.html';
+const selector = '.xl7428234';
+const CrawUrl = 'http://www.mca.gov.cn/article/sj/xzqh/2019/201901-06/201906211421.html';
 
 function fetchASave(cityCode, cityName) {
-        let url = `https://geo.datav.aliyun.com/areas/bound/${encodeURIComponent(cityCode)}_full.json`;
+        let url = `https://geo.datav.aliyun.com/areas/bound/${cityCode}_full.json`;
         console.log(`url: `, url);
         scrapeIt(url).then(res => {
             if( res.response.statusCode === 200 ) {
@@ -33,9 +33,9 @@ function crawl() {
                 let cityCode, cityName;
                 $(selector).each(async function(index, el) {
                     if(index % 2 === 0) {
-                        cityCode = $(el).text();
+                        cityCode = $(el).text().trim();
                     } else {
-                        cityName = $(el).text();
+                        cityName = $(el).text().trim();
                         _.delay((cityCode, cityName) => fetchASave(cityCode, cityName), 1000, cityCode, cityName);
                     }
                 });
