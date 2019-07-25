@@ -1,51 +1,63 @@
-const fs = require('fs');
-const Crawler = require("crawler");
-const scrapeIt = require("scrape-it");
-const _ = require('lodash');
+const fs = require('fs').promises;
+const axios = require('axios');
+const cheerio = require('cheerio');
+const del = require('del');
 
 const selector = '.xl7428234';
 const CrawUrl = 'http://www.mca.gov.cn/article/sj/xzqh/2019/201901-06/201906211421.html';
+const cityCodes = []
+const cityNames = []
 
-function fetchASave(cityCode, cityName) {
-        let url = `https://geo.datav.aliyun.com/areas/bound/${cityCode}_full.json`;
-        console.log(`url: `, url);
-        scrapeIt(url).then(res => {
-            if( res.response.statusCode === 200 ) {
-                let filename = `./geojsons/${cityName}.json`
-                fs.writeFile(filename, res.body, (err) => {
-                    if (err) throw err;
-                    console.log(filename);
-                });
-            }
-        }).catch(e => {
-            console.log(e)
-        });
+async function fetchASave(cityCode, cityName) {
+    let url = `https://geo.datav.aliyun.com/areas/bound/${cityCode}_full.json`;
+    let filename = `./geojsons/${cityName}.json`
+    console.log(`url: `, url);
+    try{
+        const res = await axios.get(url)
+        if( res.status === 200 ) {
+            await fs.writeFile(filename, JSON.stringify(res.data));
+        }
+    }catch(e){
+        console.log(e)
+        // 写入空数据
+        await fs.writeFile(filename, '{"type":"FeatureCollection","features":[]}')
+    }
 }
 
-function crawl() {
-    return new Crawler({
-        maxConnections : 10,
-        callback : function (error, res, done)  {
-            if(error){
-                console.log(error);
-            } else {
-                var $ = res.$;
-                let cityCode, cityName;
-                $(selector).each(async function(index, el) {
-                    if(index % 2 === 0) {
-                        cityCode = $(el).text().trim();
-                    } else {
-                        cityName = $(el).text().trim();
-                        _.delay((cityCode, cityName) => fetchASave(cityCode, cityName), 1000, cityCode, cityName);
-                    }
-                });
-            }
-
-            done();
-        }
+function updateReadme(){
+    // 更新README.md
+    fs.readdir('./geojsons', (err, files) => {
+        const dataArray = ['# 中国城市 geojsons 列表']
+        dataArray.push("\n");
+        dataArray.push("\n");
+        files.forEach(file => {
+            const filename = file.split(".")[0]
+            dataArray.push(`+ [${filename}](./geojsons/${filename}.json)\n`)
+        });
+        fs.writeFile('./README.md', dataArray.join(''), (err) => {
+            if (err) throw err;
+        });
     });
 }
 
+async function crawl() {
+    await del(['./geojsons/*.json'])
+    const res = await axios.get(CrawUrl);
+    const $ = cheerio.load(res.data);
+    const nodes = $(selector);
+    nodes.each((index,value) => {
+        if(index % 2 === 0) {
+            cityCode = $(value).text().trim();
+            cityCodes.push(cityCode);
+        } else {
+            cityName = $(value).text().trim();
+            cityNames.push(cityName);
+        }
+    })
+    await Promise.all(cityCodes.map(async (arr,index) => {
+        await fetchASave(arr, cityNames[index]);
+    }));
+    updateReadme();
+}
 
-const c = crawl();
-c.queue(CrawUrl);
+crawl();
