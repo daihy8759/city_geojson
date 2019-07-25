@@ -7,7 +7,7 @@ const selector = '.xl7013492';
 const CrawUrl = 'http://www.mca.gov.cn/article/sj/tjbz/a/2018/201803131439.html';
 
 function fetchASave(cityCode, cityName) {
-        let url = `https://geo.datav.aliyun.com/areas/bound/${cityCode}_full.json`;
+        let url = `https://geo.datav.aliyun.com/areas/bound/${encodeURIComponent(cityCode)}_full.json`;
         console.log(`url: `, url);
         scrapeIt(url).then(res => {
             if( res.response.statusCode === 200 ) {
@@ -17,6 +17,8 @@ function fetchASave(cityCode, cityName) {
                     console.log(filename);
                 });
             }
+        }).catch(e => {
+            console.log(e)
         });
 }
 
@@ -38,7 +40,7 @@ function crawl() {
                     }
                 });
             }
-    
+
             done();
         }
     });
